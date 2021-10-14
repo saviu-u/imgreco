@@ -17,15 +17,17 @@
 
 from PIL import Image
 from io import BytesIO
+from flask_socketio import SocketIO
+from flask import Flask
 
-import socketio
 import base64
 import cv2 as cv
 import numpy as np
 
-CASCADE_PATH = "../cascades"
+CASCADE_PATH = "cascades"
 
-sio = socketio.Client()
+app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins='*')
 
 face_cascade_name = f'{CASCADE_PATH}/haarcascade_frontalface_alt.xml'
 eyes_cascade_name = f'{CASCADE_PATH}/haarcascade_eye.xml'
@@ -40,9 +42,12 @@ if not eyes_cascade.load(cv.samples.findFile(eyes_cascade_name)):
   print('--(!)Error loading eyes cascade')
   exit(0)
 
-@sio.on('stream')
+@app.route('/')
+def welcome(): 
+  return "Hello World"
+
+@socketio.on('stream')
 def on_message(data):
-  print('I received a message!')
   header, data = data.split(',', 1)
   img = base64.b64decode(data)
   img = Image.open(BytesIO(img))
@@ -57,7 +62,7 @@ def on_message(data):
   img = img.decode("UTF-8")
   img = header + "," + img
 
-  sio.emit('stream-python', img)
+  socketio.emit('stream-python', img)
 
 def detectAndDisplay(frame):
     frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -76,4 +81,5 @@ def detectAndDisplay(frame):
             frame = cv.circle(frame, eye_center, radius, (255, 0, 0 ), 4)
     return frame
 
-sio.connect("http://localhost:4001")
+if __name__ == '__main__':
+  socketio.run(app, debug = True, port=5000)
