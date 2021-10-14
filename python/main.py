@@ -23,10 +23,12 @@ import base64
 import cv2 as cv
 import numpy as np
 
+CASCADE_PATH = "../cascades"
+
 sio = socketio.Client()
 
-face_cascade_name = 'haarcascade_frontalface_alt.xml'
-eyes_cascade_name = 'haarcascade_eye.xml'
+face_cascade_name = f'{CASCADE_PATH}/haarcascade_frontalface_alt.xml'
+eyes_cascade_name = f'{CASCADE_PATH}/haarcascade_eye.xml'
 
 face_cascade = cv.CascadeClassifier()
 eyes_cascade = cv.CascadeClassifier()
