@@ -17,6 +17,7 @@
 
 from PIL import Image
 from io import BytesIO
+from flask.templating import render_template
 from flask_socketio import SocketIO
 from flask import Flask
 
@@ -25,9 +26,12 @@ import cv2 as cv
 import numpy as np
 
 CASCADE_PATH = "cascades"
+PAGES_PATH = "pages"
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=PAGES_PATH)
 socketio = SocketIO(app, cors_allowed_origins='*')
+
+socket_trigger = 0
 
 face_cascade_name = f'{CASCADE_PATH}/haarcascade_frontalface_alt.xml'
 eyes_cascade_name = f'{CASCADE_PATH}/haarcascade_eye.xml'
@@ -42,12 +46,19 @@ if not eyes_cascade.load(cv.samples.findFile(eyes_cascade_name)):
   print('--(!)Error loading eyes cascade')
   exit(0)
 
-@app.route('/')
-def welcome(): 
-  return "Hello World"
+@app.route('/stream')
+def stream(): 
+  return render_template('stream.html')
+
+@app.route('/view')
+def view(): 
+  return render_template('view.html')
 
 @socketio.on('stream')
 def on_message(data):
+  global socket_trigger
+  session_flag = socket_trigger
+
   header, data = data.split(',', 1)
   img = base64.b64decode(data)
   img = Image.open(BytesIO(img))
@@ -62,6 +73,11 @@ def on_message(data):
   img = img.decode("UTF-8")
   img = header + "," + img
 
+  if session_flag < socket_trigger:
+    print("Frame lost")
+    return
+
+  socket_trigger += 1
   socketio.emit('stream-python', img)
 
 def detectAndDisplay(frame):
