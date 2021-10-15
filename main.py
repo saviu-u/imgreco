@@ -29,9 +29,7 @@ CASCADE_PATH = "cascades"
 PAGES_PATH = "pages"
 
 app = Flask(__name__, template_folder=PAGES_PATH)
-socketio = SocketIO(app, cors_allowed_origins='*')
-
-socket_trigger = 0
+socketio = SocketIO(app, cors_allowed_origins='*', async_handlers = True)
 
 face_cascade_name = f'{CASCADE_PATH}/haarcascade_frontalface_alt.xml'
 eyes_cascade_name = f'{CASCADE_PATH}/haarcascade_eye.xml'
@@ -56,29 +54,24 @@ def view():
 
 @socketio.on('stream')
 def on_message(data):
-  global socket_trigger
-  session_flag = socket_trigger
+  try:
+    header, data = data.split(',', 1)
+    img = base64.b64decode(data)
+    img = Image.open(BytesIO(img))
 
-  header, data = data.split(',', 1)
-  img = base64.b64decode(data)
-  img = Image.open(BytesIO(img))
+    img = np.asarray(img)
+    img = detectAndDisplay(img)
 
-  img = np.asarray(img)
-  img = detectAndDisplay(img)
+    img = Image.fromarray(img)
+    buffered = BytesIO()
+    img.save(buffered, format="JPEG")
+    img = base64.b64encode(buffered.getvalue())
+    img = img.decode("UTF-8")
+    img = header + "," + img
 
-  img = Image.fromarray(img)
-  buffered = BytesIO()
-  img.save(buffered, format="JPEG")
-  img = base64.b64encode(buffered.getvalue())
-  img = img.decode("UTF-8")
-  img = header + "," + img
-
-  if session_flag < socket_trigger:
-    print("Frame lost")
+    socketio.emit('stream-python', img)
+  except:
     return
-
-  socket_trigger += 1
-  socketio.emit('stream-python', img)
 
 def detectAndDisplay(frame):
     frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -98,4 +91,4 @@ def detectAndDisplay(frame):
     return frame
 
 if __name__ == '__main__':
-  socketio.run(app, debug = True, port=5000)
+  socketio.run(app, host='0.0.0.0', port=5000, debug=True)
