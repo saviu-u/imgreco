@@ -1,48 +1,15 @@
-# from flask import Flask
-# from flask_socketio import SocketIO
-
-# app = Flask(__name__)
-# socketio = SocketIO(app)
-
-# @app.route('/')
-# def index():
-#   return "Hello world"
-
-# @socketio.on("stream")
-# def my_event(message):
-#   print("*" * 100, message)
-
-# if __name__ == '__main__':
-#   socketio.run(app)
-
-from PIL import Image
-from io import BytesIO
+# BackEnd tools
 from flask.templating import render_template
-from flask_socketio import SocketIO
-from flask import Flask
+from flask import jsonify, Flask, request
 
-import base64
-import cv2 as cv
-import numpy as np
+from lib.type_translation import TYPES # Helper for translating type keys
+from lib.flask_helpers import * # Helper for returning messages instantly
+from lib.base64_helpers import base64ToNmpArray, NmpArrayToBase64 # Helper for converting base64 packages
+from lib.detection_helpers import recognize_objects # Helper for recognizing object
 
-CASCADE_PATH = "cascades"
 PAGES_PATH = "pages"
 
 app = Flask(__name__, template_folder=PAGES_PATH)
-socketio = SocketIO(app, cors_allowed_origins='*', async_handlers = True)
-
-face_cascade_name = f'{CASCADE_PATH}/haarcascade_frontalface_alt.xml'
-eyes_cascade_name = f'{CASCADE_PATH}/haarcascade_eye.xml'
-
-face_cascade = cv.CascadeClassifier()
-eyes_cascade = cv.CascadeClassifier()
-#-- 1. Load the cascades
-if not face_cascade.load(cv.samples.findFile(face_cascade_name)):
-  print('--(!)Error loading face cascade')
-  exit(0)
-if not eyes_cascade.load(cv.samples.findFile(eyes_cascade_name)):
-  print('--(!)Error loading eyes cascade')
-  exit(0)
 
 @app.route('/stream')
 def stream(): 
@@ -52,43 +19,29 @@ def stream():
 def view(): 
   return render_template('view.html')
 
-@socketio.on('stream')
-def on_message(data):
+@app.route('/types')
+def types():
+  return jsonify(TYPES)
+
+@app.before_request
+def valid_post_requests():
+  if request.method != "POST": return
+  if not request.is_json: return send_error("Request wasn't a valid JSON")
+
+@app.route('/retrieve', methods=['POST'])
+def retrieve():
   try:
-    header, data = data.split(',', 1)
-    img = base64.b64decode(data)
-    img = Image.open(BytesIO(img))
+    data = request.get_json()
 
-    img = np.asarray(img)
-    img = detectAndDisplay(img)
+    frame = data.get('frame')
+    if frame is None: return send_error("\"Frame\" key must be specified")
 
-    img = Image.fromarray(img)
-    buffered = BytesIO()
-    img.save(buffered, format="JPEG")
-    img = base64.b64encode(buffered.getvalue())
-    img = img.decode("UTF-8")
-    img = header + "," + img
+    header, img_array = base64ToNmpArray(frame)
+    img_array = recognize_objects(img_array, data.get('allowed_objects'))
 
-    socketio.emit('stream-python', img)
-  except:
-    return
-
-def detectAndDisplay(frame):
-    frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    frame_gray = cv.equalizeHist(frame_gray)
-    #-- Detect faces
-    faces = face_cascade.detectMultiScale(frame_gray)
-    for (x,y,w,h) in faces:
-        center = (x + w//2, y + h//2)
-        frame = cv.ellipse(frame, center, (w//2, h//2), 0, 0, 360, (255, 0, 255), 4)
-        faceROI = frame_gray[y:y+h,x:x+w]
-        #-- In each face, detect eyes
-        eyes = eyes_cascade.detectMultiScale(faceROI)
-        for (x2,y2,w2,h2) in eyes:
-            eye_center = (x + x2 + w2//2, y + y2 + h2//2)
-            radius = int(round((w2 + h2)*0.25))
-            frame = cv.circle(frame, eye_center, radius, (255, 0, 0 ), 4)
-    return frame
+    return jsonify({ "result": NmpArrayToBase64(header, img_array) }), 200
+  except EmergencyMessage as e:
+    return e.response
 
 if __name__ == '__main__':
-  socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+  app.run(host='0.0.0.0', port=5000)
