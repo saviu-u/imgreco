@@ -1,9 +1,9 @@
 # ImgReco #
 
-This project is made for the 6th semester of Computer Cience from UNIP
+This project is made for UNIP Computer Science, 6th semester
 
 ---
-This project uses a endpoint to receive a base64 image with some parameters and returns a base64 image with the respective recognitions
+This project uses an endpoint to receive a base64 image with some parameters and returns a base64 image with the respective recognitions
 
 # Installation
 
