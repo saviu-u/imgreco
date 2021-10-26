@@ -24,6 +24,17 @@ def valid_post_requests():
   if request.method != "POST": return
   if not request.is_json: return send_error("Request wasn't a valid JSON")
 
+@app.after_request
+def allow_all_hosts(response):
+  header = response.headers
+
+  header['Access-Control-Allow-Origin'] = '*'
+  header['Access-Control-Allow-Methods'] = 'POST, PUT, DELETE, GET, OPTIONS'
+  header['Access-Control-Request-Method'] = '*'
+  header['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+
+  return response
+
 @app.route('/retrieve', methods=['POST'])
 def retrieve():
   try:
