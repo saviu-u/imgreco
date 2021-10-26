@@ -17,8 +17,7 @@ Path                  | Method | Return | Description |
 ----------------------|--------|--------|-------------|
 /types                | GET    | json   | All types of recognitions available
 /retrieve             | POST   | json   | Returns recognized image
-/stream (Debug Pages) | GET    | doc    | Opens a stream with a webcam (Don't use in production)
-/view   (Debug Pages) | GET    | doc    | Receives a webcam (Don't use in production)
+/                     | GET    | doc    | Opens a stream with a webcam (main page)
 
 The _/retrive_ receive two parameters
 

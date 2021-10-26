@@ -11,13 +11,9 @@ PAGES_PATH = "pages"
 
 app = Flask(__name__, template_folder=PAGES_PATH)
 
-@app.route('/stream')
+@app.route('/')
 def stream(): 
   return render_template('stream.html')
-
-@app.route('/view')
-def view(): 
-  return render_template('view.html')
 
 @app.route('/types')
 def types():
