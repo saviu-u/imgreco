@@ -32,4 +32,4 @@ The _/retrive_ receive two parameters
 * Sávio Cangussu
 * Francisco Roque
 * Guilherme Henrique F Rosa
-* Raphael Basse
+* Raphael Bassi
